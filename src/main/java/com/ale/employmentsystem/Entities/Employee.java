@@ -82,7 +82,7 @@ public class Employee {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Employee employee = (Employee) o;
-        return id.equals(employee.id) && firstName.equals(employee.firstName) && Objects.equals(middleName, employee.middleName) && lastName.equals(employee.lastName) && birthDate.equals(employee.birthDate) && position.equals(employee.position);
+        return firstName.equals(employee.firstName) && Objects.equals(middleName, employee.middleName) && lastName.equals(employee.lastName) && birthDate.equals(employee.birthDate);
     }
 
     @Override

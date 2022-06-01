@@ -1,23 +1,23 @@
 package com.ale.employmentsystem.Views;
 
 import com.ale.employmentsystem.Entities.Employee;
+import com.ale.employmentsystem.Exceptions.EmployeeEmptyFieldsException;
+import com.ale.employmentsystem.Exceptions.EmployeeInvalidDataException;
 import com.ale.employmentsystem.Services.EmployeeService;
-import com.vaadin.flow.component.Key;
-import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.contextmenu.MenuItem;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.menubar.MenuBar;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.tabs.Tab;
-import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.textfield.TextFieldVariant;
 import com.vaadin.flow.data.binder.Binder;
-import com.vaadin.flow.data.converter.LocalDateTimeToDateConverter;
+
 import com.vaadin.flow.data.converter.LocalDateToDateConverter;
 import com.vaadin.flow.router.Route;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,8 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Date;
+
 import java.util.List;
 
 @Route("")
@@ -37,37 +36,43 @@ public class MainView extends VerticalLayout {
     @Autowired
     public MainView(EmployeeService employeeService) {
         this.employeeService = employeeService;
+        displayAppName();
+        displayMenu();
+
+    }
+
+    private void displayAppName() {
         TextField center = new TextField();
         center.setReadOnly(true);
-        center.setValue("Hello! :)");
+        center.setWidth("400px");
+        center.setValue("Employment Management System app :)");
         center.addThemeVariants(TextFieldVariant.LUMO_ALIGN_CENTER);
         add(center);
+    }
 
-        HorizontalLayout horizontalLayout = new HorizontalLayout();
-        horizontalLayout.setWidth("100%");
-        Button getEmployeesButton = new Button("Get employees");
-        getEmployeesButton.addClickListener(clickEvent -> {
-            displayEmployees(getEmployeesButton);
-        });
+    private void displayMenu() {
+        MenuBar menuBar = new MenuBar();
 
-        Button addEmployee = new Button("Add new employee");
+        MenuItem getEmployeesButton = menuBar.addItem("Get employees");
+        MenuItem addEmployee = menuBar.addItem("Add new employee");
+
         addEmployee.addClickListener(clickEvent -> {
             try {
-                addNewEmployee(addEmployee);
+                addNewEmployee(getEmployeesButton, addEmployee);
             } catch (ParseException e) {
                 throw new RuntimeException(e);
             }
         });
-        add(horizontalLayout);
-        horizontalLayout.add(getEmployeesButton);
-        horizontalLayout.add(addEmployee);
 
+        getEmployeesButton.addClickListener(clickEvent -> {
+            displayEmployees(getEmployeesButton, addEmployee);
+        });
+        add(menuBar);
     }
 
-    private void displayEmployees(Button getEmployeesButton) {
+    private void displayEmployees(MenuItem getEmployeesButton, MenuItem addEmployee) {
         List<Employee> employeeList = this.employeeService.getEmployees();
         Grid<Employee> employeesGrid = new Grid<>(Employee.class, false);
-
         employeesGrid.addColumn(Employee::getId).setHeader("Id");
         employeesGrid.addColumn(Employee::getFirstName).setHeader("First name");
         employeesGrid.addColumn(Employee::getMiddleName).setHeader("Middle name");
@@ -76,16 +81,19 @@ public class MainView extends VerticalLayout {
         employeesGrid.addColumn(Employee::getPosition).setHeader("Position");
         employeesGrid.setItems(employeeList);
         add(employeesGrid);
+
         getEmployeesButton.setEnabled(false);
+        addEmployee.setEnabled(true);
 
     }
 
-    private void addNewEmployee(Button getEmployeesButton) throws ParseException {
+    private void addNewEmployee(MenuItem getEmployeesButton, MenuItem addEmployee) throws ParseException {
         getEmployeesButton.setEnabled(true);
+        addEmployee.setEnabled(false);
         createAddForm();
     }
 
-    private void createAddForm() throws ParseException {
+    private void createAddForm() {
         Binder<Employee> binder = new Binder<>(Employee.class);
 
         FormLayout form = new FormLayout();
@@ -130,25 +138,23 @@ public class MainView extends VerticalLayout {
                         .bind(Employee::getBirthDate, Employee::setBirthDate);
                 binder.bind(tf5, Employee::getPosition,
                         Employee::setPosition);
+                if (tf1.isEmpty() || tf3.isEmpty() || tf4.isEmpty() || tf5.isEmpty())
+                    throw new EmployeeEmptyFieldsException();
+
                 binder.setBean(new Employee(tf1.getValue(), tf2.getValue(), tf3.getValue(), new SimpleDateFormat("yyyy-MM-dd").parse(String.valueOf(tf4.getValue())), tf5.getValue()));
                 save(binder);
-
             } catch (ParseException e) {
-                throw new RuntimeException(e);
+                throw new EmployeeInvalidDataException();
             }
         });
     }
 
     private void save(Binder binder) throws ParseException {
         Employee employee = (Employee) binder.getBean();
-        try {
-            employeeService.addEmployee(employee);
-        } catch (Exception e) {
-            TextField error = new TextField();
-            error.setReadOnly(true);
-            error.setValue("Couldn't add employee");
-            error.addThemeVariants(TextFieldVariant.LUMO_ALIGN_CENTER);
-        }
+        employeeService.addEmployee(employee);
+        Notification successNotification = Notification.show("The employee has been added successfully!");
+        successNotification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        add(successNotification);
     }
 
 }

@@ -1,14 +1,11 @@
 package com.ale.employmentsystem.Services;
 
 import com.ale.employmentsystem.Entities.Employee;
+import com.ale.employmentsystem.Exceptions.EmployeeDuplicateException;
 import com.ale.employmentsystem.Repositories.EmployeeRepository;
-import com.vaadin.flow.data.binder.Binder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 
 @Service
@@ -22,15 +19,14 @@ public class EmployeeService {
     public List<Employee> getEmployees(){
         return this.repository.findAll();
     }
-    public Employee addEmployee(Employee employee) throws ParseException {
-//        System.out.println(data.get(0));
-//        System.out.println(data.get(1));
-//        System.out.println(data.get(2));
-//        System.out.println(data.get(3));
-//        System.out.println(data.get(4));
-        System.out.println(employee);
-        return this.repository.save(employee);
-    }
+    public void addEmployee(Employee employee){
 
+            if (!employee.equals(this.repository.findEmployeeByBirthDateAndLastNameAndFirstNameAndMiddleName(employee.getBirthDate(), employee.getLastName(), employee.getFirstName(), employee.getMiddleName())))
+                this.repository.save(employee);
+            else
+                throw new EmployeeDuplicateException();
+
+
+    }
 
 }
