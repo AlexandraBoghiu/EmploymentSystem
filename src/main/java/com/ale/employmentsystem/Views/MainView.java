@@ -9,6 +9,9 @@ import com.vaadin.flow.component.contextmenu.MenuItem;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.dataview.GridListDataView;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -19,14 +22,19 @@ import com.vaadin.flow.component.textfield.TextFieldVariant;
 import com.vaadin.flow.data.binder.Binder;
 
 import com.vaadin.flow.data.converter.LocalDateToDateConverter;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.Route;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import javax.swing.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.ZoneId;
 
 import java.util.List;
+import java.util.Locale;
+
+import static java.util.regex.Pattern.matches;
 
 @Route("")
 public class MainView extends VerticalLayout {
@@ -37,6 +45,7 @@ public class MainView extends VerticalLayout {
     private FormLayout form;
     private Button save, delete;
     private HorizontalLayout saveDeleteButtons;
+    private TextField searchField;
 
     @Autowired
     public MainView(EmployeeService employeeService) {
@@ -47,6 +56,7 @@ public class MainView extends VerticalLayout {
         this.save = new Button("Save");
         this.delete = new Button("Delete");
         this.saveDeleteButtons = new HorizontalLayout(save, delete);
+        this.searchField = new TextField();
 
         createGrid();
         displayAppName();
@@ -62,6 +72,27 @@ public class MainView extends VerticalLayout {
         employeesGrid.addColumn(Employee::getBirthDate).setHeader("Birth date");
         employeesGrid.addColumn(Employee::getPosition).setHeader("Position");
         employeesGrid.setItems(employeeList);
+
+        searchField.setWidth("20%");
+        searchField.setPlaceholder("Search");
+        GridListDataView<Employee> employeeGridListDataView = employeesGrid.setItems(employeeList);
+
+        searchField.setValueChangeMode(ValueChangeMode.EAGER);
+        searchField.addValueChangeListener(e -> employeeGridListDataView.refreshAll());
+        searchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        employeeGridListDataView.addFilter(employee -> {
+            String searchTerm = searchField.getValue().trim();
+
+            if (searchTerm.isEmpty())
+                return true;
+
+            boolean matchesFirstName = matches(employee.getFirstName().toLowerCase(), searchTerm.toLowerCase());
+            boolean matchesMiddleName = matches(employee.getMiddleName().toLowerCase(), searchTerm.toLowerCase());
+            boolean matchesLastName = matches(employee.getLastName().toLowerCase(), searchTerm.toLowerCase());
+            boolean matchesPosition = matches(employee.getPosition().toLowerCase(), searchTerm.toLowerCase());
+
+            return matchesFirstName || matchesMiddleName || matchesLastName || matchesPosition;
+        });
     }
 
     private void displayAppName() {
@@ -97,10 +128,13 @@ public class MainView extends VerticalLayout {
         remove(this.saveDeleteButtons);
         getEmployeesButton.setEnabled(false);
         addEmployee.setEnabled(true);
+        add(searchField);
         add(employeesGrid);
+
     }
 
     private void addNewEmployee(MenuItem getEmployeesButton, MenuItem addEmployee) throws ParseException {
+        remove(searchField);
         remove(employeesGrid);
         getEmployeesButton.setEnabled(true);
         addEmployee.setEnabled(false);
@@ -171,4 +205,8 @@ public class MainView extends VerticalLayout {
         add(successNotification);
     }
 
+    private boolean matches(String value, String searchTerm) {
+        return searchTerm == null || searchTerm.isEmpty() || value
+                .toLowerCase().contains(searchTerm.toLowerCase());
+    }
 }
