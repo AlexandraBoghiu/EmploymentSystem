@@ -32,13 +32,36 @@ import java.util.List;
 public class MainView extends VerticalLayout {
 
     private final EmployeeService employeeService;
+    private List<Employee> employeeList;
+    private Grid<Employee> employeesGrid;
+    private FormLayout form;
+    private Button save, delete;
+    private HorizontalLayout saveDeleteButtons;
 
     @Autowired
     public MainView(EmployeeService employeeService) {
         this.employeeService = employeeService;
+        this.employeeList = this.employeeService.getEmployees();
+        this.employeesGrid = new Grid<>(Employee.class, false);
+        this.form = new FormLayout();
+        this.save = new Button("Save");
+        this.delete = new Button("Delete");
+        this.saveDeleteButtons = new HorizontalLayout(save, delete);
+
+        createGrid();
         displayAppName();
         displayMenu();
 
+    }
+
+    private void createGrid() {
+        employeesGrid.addColumn(Employee::getId).setHeader("Id");
+        employeesGrid.addColumn(Employee::getFirstName).setHeader("First name");
+        employeesGrid.addColumn(Employee::getMiddleName).setHeader("Middle name");
+        employeesGrid.addColumn(Employee::getLastName).setHeader("Last name");
+        employeesGrid.addColumn(Employee::getBirthDate).setHeader("Birth date");
+        employeesGrid.addColumn(Employee::getPosition).setHeader("Position");
+        employeesGrid.setItems(employeeList);
     }
 
     private void displayAppName() {
@@ -52,7 +75,6 @@ public class MainView extends VerticalLayout {
 
     private void displayMenu() {
         MenuBar menuBar = new MenuBar();
-
         MenuItem getEmployeesButton = menuBar.addItem("Get employees");
         MenuItem addEmployee = menuBar.addItem("Add new employee");
 
@@ -71,32 +93,24 @@ public class MainView extends VerticalLayout {
     }
 
     private void displayEmployees(MenuItem getEmployeesButton, MenuItem addEmployee) {
-        List<Employee> employeeList = this.employeeService.getEmployees();
-        Grid<Employee> employeesGrid = new Grid<>(Employee.class, false);
-        employeesGrid.addColumn(Employee::getId).setHeader("Id");
-        employeesGrid.addColumn(Employee::getFirstName).setHeader("First name");
-        employeesGrid.addColumn(Employee::getMiddleName).setHeader("Middle name");
-        employeesGrid.addColumn(Employee::getLastName).setHeader("Last name");
-        employeesGrid.addColumn(Employee::getBirthDate).setHeader("Birth date");
-        employeesGrid.addColumn(Employee::getPosition).setHeader("Position");
-        employeesGrid.setItems(employeeList);
-        add(employeesGrid);
-
+        remove(this.form);
+        remove(this.saveDeleteButtons);
         getEmployeesButton.setEnabled(false);
         addEmployee.setEnabled(true);
-
+        add(employeesGrid);
     }
 
     private void addNewEmployee(MenuItem getEmployeesButton, MenuItem addEmployee) throws ParseException {
+        remove(employeesGrid);
         getEmployeesButton.setEnabled(true);
         addEmployee.setEnabled(false);
-        createAddForm();
+        createForm();
     }
 
-    private void createAddForm() {
+    private void createForm() {
         Binder<Employee> binder = new Binder<>(Employee.class);
 
-        FormLayout form = new FormLayout();
+        this.form = new FormLayout();
         TextField tf1 = new TextField("firstName");
         tf1.setRequiredIndicatorVisible(true);
         form.add(tf1);
@@ -119,11 +133,9 @@ public class MainView extends VerticalLayout {
         tf5.setRequiredIndicatorVisible(true);
         form.add(tf5);
         add(form);
-
-        Button save = new Button("Save");
-        Button delete = new Button("Delete");
-
-        HorizontalLayout saveDeleteButtons = new HorizontalLayout(save, delete);
+        this.save = new Button("Save");
+        this.delete = new Button("Delete");
+        this.saveDeleteButtons = new HorizontalLayout(save, delete);
         add(saveDeleteButtons);
 
         save.addClickListener(event -> {
@@ -147,11 +159,13 @@ public class MainView extends VerticalLayout {
                 throw new EmployeeInvalidDataException();
             }
         });
+
     }
 
     private void save(Binder binder) throws ParseException {
         Employee employee = (Employee) binder.getBean();
         employeeService.addEmployee(employee);
+        employeeList.add(employee);
         Notification successNotification = Notification.show("The employee has been added successfully!");
         successNotification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         add(successNotification);
